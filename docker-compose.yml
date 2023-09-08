@@ -1,7 +1,7 @@
 version: '3.8'
 name: 'shopper-challenge'
 services:
-  db:
+  database:
     image: mysql:8
     container_name: db
     platform: linux/x86_64
