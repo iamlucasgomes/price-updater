@@ -1,85 +1,102 @@
-import { Button, Col, Row, Tooltip, Typography } from 'antd';
-import { StyledFooter } from './styles';
-import { DeleteOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { Button, Col, Row, Tooltip, Typography } from "antd";
+import { StyledFooter } from "./styles";
+import { QuestionCircleOutlined } from "@ant-design/icons";
 
 const { Text } = Typography;
 
 type FooterProps = {
-  onClickDelete?(): void;
-  isShowDeleteButton?: boolean;
-  deleteLoading?: boolean;
   saveLoading?: boolean;
   hasError: boolean;
   text?: string;
-  disabled?: boolean;
-  disabledMessage?: {
-    title: string;
-    full: string;
-  };
+  isValidating?: boolean;
+  setHasError?: React.Dispatch<React.SetStateAction<boolean>>;
+  setIsValidating?: React.Dispatch<React.SetStateAction<boolean>>;
+  setProducts?: React.Dispatch<
+    React.SetStateAction<
+      {
+        code: number;
+        name: string;
+        costPrice: string;
+        salesPrice: string;
+        newPrice: string;
+      }[]
+    >
+  >;
   messageSuggestions: {
     title: string;
     full: string;
-  };
+  }[];
 };
 
 const DefaultFooter: React.FC<FooterProps> = ({
-  onClickDelete,
-  isShowDeleteButton,
-  deleteLoading,
   saveLoading,
   hasError,
   messageSuggestions,
   text,
-  disabled,
-  disabledMessage,
+  isValidating,
+  setIsValidating,
+  setProducts,
+  setHasError,
 }) => {
   return (
     <StyledFooter>
       <Row justify="end">
-        <Col style={{ marginTop: 4, marginRight: 16 }}>
-          {hasError && (
-            <Tooltip title={messageSuggestions.full}>
-              <Text type="danger">
-                <QuestionCircleOutlined />
-                &nbsp;
-                {messageSuggestions.title}
-              </Text>
-            </Tooltip>
-          )}
-        </Col>
-        {isShowDeleteButton && (
-          <Col span={4} style={{ marginRight: 16 }}>
+        {!hasError && isValidating && (
+          <Col style={{ marginRight: "5px" }} span={6}>
             <Button
-              loading={deleteLoading}
-              onClick={onClickDelete}
-              htmlType="button"
+              htmlType="submit"
+              loading={saveLoading}
               block
-              type="text"
-              icon={<DeleteOutlined />}>
-              Excluir
+              type="primary"
+            >
+              Atualizar
             </Button>
           </Col>
         )}
-        <Col style={{ marginTop: 4, marginRight: 16 }}>
-          {disabled && (
-            <Tooltip title={disabledMessage?.full}>
-              <Text type="warning">
-                <QuestionCircleOutlined />
-                &nbsp;
-                {disabledMessage?.title}
-              </Text>
-            </Tooltip>
-          )}
-        </Col>
-        <Col style={{marginRight: '20px'}} span={4}>
+        {isValidating && (
+          <Col style={{ marginRight: "5px" }} span={6}>
+            <Button
+              htmlType="submit"
+              loading={saveLoading}
+              block
+              type="primary"
+              onClick={() => {
+                if (setIsValidating) setIsValidating(false);
+                if (setProducts) setProducts([]);
+                if (setHasError) setHasError(false);
+              }}
+            >
+              Cancelar
+            </Button>
+          </Col>
+        )}
+        <Col style={{ marginRight: "18px" }} span={6}>
           <Button
+            disabled={isValidating}
             htmlType="submit"
             loading={saveLoading}
-            disabled={disabled}
             block
-            type="primary">
-            {text ? text : 'Salvar'}
+            type="primary"
+          >
+            {text ? text : "Salvar"}
           </Button>
+        </Col>
+      </Row>
+      <Row justify="end">
+        <Col style={{ marginTop: 4, marginRight: 16 }}>
+          {hasError && (
+            <Text type="danger" style={{ marginRight: 16 }}>
+              {messageSuggestions.map((message, index) => (
+                <Tooltip key={index} title={message.title}>
+                  <p key={index}>
+                    <QuestionCircleOutlined />
+                    &nbsp;
+                    {message.full}
+                  </p>
+                </Tooltip>
+              ))}
+            </Text>
+          )}
         </Col>
       </Row>
     </StyledFooter>

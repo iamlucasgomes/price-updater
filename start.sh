@@ -1,3 +1,10 @@
+check_build_id() {
+  if [ ! -f .next/BUILD_ID ]; then
+    echo "O arquivo BUILD_ID não foi encontrado na pasta .next. Certifique-se de que o Next.js tenha sido construído corretamente."
+    exit 1
+  fi
+}
+
 check_containers() {
   while true; do
     if docker compose ps | grep -q "Up"; then
@@ -10,12 +17,12 @@ check_containers() {
 }
 
 npm install &&
-  
-docker compose up -d &&
+  npm run build &&
+  check_build_id &&
+  docker compose up -d &&
+  check_containers
 
-check_containers
-
-npx prisma migrate dev && 
-npx prisma db seed &&
-next build && 
-next start
+npx prisma migrate dev &&
+  npx prisma db seed &&
+  next build &&
+  next start

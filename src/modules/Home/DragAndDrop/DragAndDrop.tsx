@@ -1,56 +1,91 @@
-import { FC, useMemo } from "react";
-import { Spin, Tooltip, Typography } from "antd";
+import { FC, SetStateAction, useMemo, useState } from "react";
+import { Spin } from "antd";
 import useSimpleForm from "~/hooks/useSimpleForm";
 import { Wrapper } from "./styles";
 import DefaultFooter from "~/components/DrawerForm/DefaultFooter";
-import { QuestionCircleOutlined } from "@ant-design/icons";
 import DragAndDrop from "~/components/DragAndDrop";
+import Card from "~/components/Card";
+import { set } from "lodash";
 
 type Props = {
   id?: string;
   onSuccess(): void;
-  // initialValue: ProductionAdjustmentType.FormValues | undefined;
 };
 
 const Drag: FC<Props> = ({ id, onSuccess }) => {
+  const [droppedData, setDroppedData] = useState(null);
+  const [isValidating, setIsValidating] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const [messageSuggestions, setMessageSuggestions] = useState<
+    {
+      title: string;
+      full: string;
+    }[]
+  >([{ title: "", full: "" }]);
+  const [products, setProducts] = useState<
+    {
+      code: number;
+      name: string;
+      costPrice: string;
+      salesPrice: string;
+      newPrice: string;
+    }[]
+  >([]);
   const {
     formCommon,
     handleSubmit,
     integration: { send, loading },
-    messageSuggestions,
-    hasError,
   } = useSimpleForm({
     defaultValues: {},
     integration: {
       route: "products",
-      formatter: (data: any) => {
-        console.log(data);
-        return {
-          ...data,
-        };
-      },
+      formatter: () => ({
+        droppedData,
+      }),
     },
   });
 
-  const { Title } = Typography;
+  const handleFileUploadSuccess = (fileContents: SetStateAction<null>) => {
+    setDroppedData(fileContents);
+  };
 
   const onSubmit = async () => {
-    await send();
-    onSuccess();
+    const { data } = await send();
+    setProducts(data.products);
+    if (data.error) {
+      setHasError(data.error);
+      setIsValidating(true);
+      return setMessageSuggestions(data.messages);
+    }
+    setIsValidating(true);
+    setHasError(data.error);
   };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <Spin tip="Loading..." spinning={loading}>
         <Wrapper>
-          <DragAndDrop />
+          {!isValidating && (
+            <DragAndDrop onFileUploadSuccess={handleFileUploadSuccess} />
+          )}
+          {products.map((product, key) => (
+            <Card
+              key={key}
+              title={`Codigo ${product.code}`}
+              content={product}
+            />
+          ))}
         </Wrapper>
       </Spin>
       <DefaultFooter
-        isShowDeleteButton={Boolean(id)}
         saveLoading={loading}
+        isValidating={isValidating}
+        setIsValidating={setIsValidating}
+        setProducts={setProducts}
         hasError={hasError}
+        setHasError={setHasError}
         messageSuggestions={messageSuggestions}
+        text="Validar"
       />
     </form>
   );

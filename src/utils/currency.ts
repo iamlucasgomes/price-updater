@@ -8,3 +8,16 @@ export const handleBRLNumberFormatter = (value?: number | string) => {
 };
 
 export const format = (value: number) => handleBRLNumberFormatter(value);
+
+export const handleMoneyOnBRL = (currencyValue: number | string) => {
+  if (!currencyValue || currencyValue === '-') {
+    return '-';
+  }
+
+  var brlFormatter = new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  });
+
+  return brlFormatter.format(Number(currencyValue));
+};

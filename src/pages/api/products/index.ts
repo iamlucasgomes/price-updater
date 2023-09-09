@@ -2,18 +2,12 @@ import upperFirst from "lodash/upperFirst";
 import type { NextApiRequest, NextApiResponse } from "next";
 import NextCors from "nextjs-cors";
 import prisma from "~/lib/prisma";
-
-const baseAdd = {
-  Ativo: true,
-  AddedDate: new Date(),
-};
-
-const baseUpdate = {
-  ModifiedDate: new Date(),
-};
+import parseCSVLine from "~/utils/parseCSVLine";
+import productExists from "~/utils/productExists";
 
 interface CustomNextApiRequest extends NextApiRequest {
-  body: ProductsType.FormValues;
+  [x: string]: any;
+  body: string;
 }
 
 const handleSortRelations = ({
@@ -49,12 +43,9 @@ export default async function handle(
 
   if (req.method == "GET") {
     GET(req, res);
+  } else if (req.method == "POST") {
+    POST(req, res);
   }
-  // else if (req.method === 'PUT') {
-  //   PUT(req, res);
-  // } else if (req.method == 'POST') {
-  //   POST(req, res);
-  // }
 }
 
 const GET = async (
@@ -102,212 +93,128 @@ const GET = async (
   });
 };
 
-// const POST = async (req: CustomNextApiRequest, res: NextApiResponse) => {
-//   const body = req.body;
-//   try {
-//     const findByCpf = await prisma.fisicas.findFirst({
-//       where: {
-//         CPF: body.CPF,
-//       },
-//     });
-//     if (findByCpf) {
-//       const createFeedback = await prisma.contratacoes.create({
-//         data: {
-//           ModeloContrato: body.ContratacaoModeloContrato,
-//           Funcao: body.ContratacaoFuncao,
-//           InicioContrato: body.ContratacaoInicioContrato,
-//           ValorBase: body.ContratacaoValorBase,
-//           OrganizacaoId: '1',
-//           AssociadoId: findByCpf.AssociadoId,
-//           AddedDate: new Date(),
-//           Ativo: true,
-//           TermminoContrato: body.ContratacaoTermminoContrato,
-//           RecebeComissao: body.ContratacaoRecebeComissao,
-//           Quantidade: Number(
-//             body.ContratacaoQuantidade ? body.ContratacaoQuantidade : 0,
-//           ),
-//         },
-//       });
-//       res.status(200).json(createFeedback);
-//       return;
-//     } else {
-//       const createFeedback = await prisma.fisicas.create({
-//         data: {
-//           Associados: {
-//             create: {
-//               Contratacoes: {
-//                 create: {
-//                   OrganizacaoId: '1',
-//                   InicioContrato: new Date(body.ContratacaoInicioContrato),
-//                   TermminoContrato: body.ContratacaoTermminoContrato
-//                     ? new Date(body.ContratacaoTermminoContrato)
-//                     : null,
-//                   ModeloContrato: body.ContratacaoModeloContrato,
-//                   Funcao: body.ContratacaoFuncao,
-//                   ValorBase: body.ContratacaoValorBase,
-//                   SocioId: body.ContratacaoSocioId,
-//                   RecebeComissao: body.ContratacaoRecebeComissao,
-//                   Quantidade: Number(body.ContratacaoQuantidade),
-//                   UnidadeMedidaId: body.ContratacaoUnidadeMedidaId,
-//                   ...baseAdd,
-//                 },
-//               },
-//               Contatos: {
-//                 create: {
-//                   Nome: body.ContatosNome,
-//                   Telefone: onlyNumbers(String(body.ContatosTelefone)),
-//                   ...baseAdd,
-//                 },
-//               },
-//               Nome: body.Nome,
-//               Email: body.Email,
-//               DadosBancarios: {
-//                 create: {
-//                   Banco: body.DadosBancariosBanco,
-//                   Agencia: body.DadosBancariosAgencia,
-//                   Conta: body.DadosBancariosConta,
-//                   Pix: body.DadosBancariosPix,
-//                   ...baseAdd,
-//                 },
-//               },
-//               Enderecos: {
-//                 create: {
-//                   CEP: Number(onlyNumbers(String(body.EnderecoCEP))),
-//                   Logradouro: body.EnderecoLogradouro,
-//                   Bairro: body?.EnderecoBairro,
-//                   Cidade: body?.EnderecoCidade,
-//                   Complemento: body?.EnderecoComplemento,
-//                   UF: body?.EnderecoUF,
-//                   Numero: body?.EnderecoNumero,
-//                   Latitude: 0,
-//                   Longitude: 0,
-//                   ...baseAdd,
-//                 },
-//               },
-//               TipoRelacao: 3,
-//               ...baseAdd,
-//             },
-//           },
-//           CPF: body?.CPF,
-//           RG: body?.RG,
-//           DataNascimento: new Date(body.DataNascimento),
-//           NomeMae: body?.NomeMae,
-//           EstadoCivil: body?.EstadoCivil,
-//           Formacao: body?.Formacao,
-//           CTPS: body?.CTPS,
-//           PisPasep: body?.PisPasep,
-//           ...baseAdd,
-//         },
-//       });
+const POST = async (req: CustomNextApiRequest, res: NextApiResponse) => {
+  const body = req.body;
+  const errors = new Set<string>();
+  const productsOk = [];
+  const updatedPrices: { [key: string]: number } = {};
 
-//       res.status(200).json(createFeedback);
-//     }
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json({
-//       error: true,
-//       message: err instanceof Error ? err.message : 'Unknown error occurred.',
-//     });
-//   }
-// };
+  try {
+    const csvLines = body.trim().split("\n").slice(5, -2);
+    const jsonDataArray = [];
+    for (const line of csvLines) {
+      jsonDataArray.push(parseCSVLine(line));
+    }
+    for (const jsonData of jsonDataArray) {
+      if (!jsonData.productCode || !jsonData.newPrice) {
+        errors.add("Todos os campos necessários devem ser fornecidos no csv.");
+        continue;
+      }
 
-// const PUT = async (req: CustomNextApiRequest, res: NextApiResponse) => {
-//   const body = req.body;
-//   console.log(body);
-//   try {
-//     const createFeedback = await prisma.fisicas.update({
-//       where: {
-//         Id: body?.Id,
-//       },
-//       data: {
-//         Associados: {
-//           update: {
-//             Contratacoes: {
-//               update: {
-//                 data: {
-//                   OrganizacaoId: '1',
-//                   InicioContrato: body?.ContratacaoInicioContrato,
-//                   TermminoContrato: body?.ContratacaoTermminoContrato,
-//                   ModeloContrato: body?.ContratacaoModeloContrato,
-//                   Funcao: body?.ContratacaoFuncao,
-//                   ValorBase: body?.ContratacaoValorBase,
-//                   SocioId: body?.ContratacaoSocioId,
-//                   RecebeComissao: body?.ContratacaoRecebeComissao,
-//                   Quantidade: body.ContratacaoQuantidade !== ''
-//                     ? Number(body?.ContratacaoQuantidade)
-//                     : 0,
-//                   UnidadeMedidaId: body?.ContratacaoUnidadeMedidaId,
-//                   ...baseUpdate,
-//                 },
-//                 where: {
-//                   Id: body.ContratacaoId,
-//                 },
-//               },
-//             },
-//             Contatos: {
-//               update: {
-//                 data: {
-//                   Nome: body.ContatosNome,
-//                   Telefone: onlyNumbers(String(body.ContatosTelefone)),
-//                   ...baseUpdate,
-//                 },
-//                 where: {
-//                   Id: body.ContatosId,
-//                 },
-//               },
-//             },
-//             Nome: body.Nome,
-//             Email: body.Email,
-//             DadosBancarios: {
-//               update: {
-//                 data: {
-//                   Banco: body.DadosBancariosBanco,
-//                   Agencia: body.DadosBancariosAgencia,
-//                   Conta: body.DadosBancariosConta,
-//                   Pix: body.DadosBancariosPix,
-//                   ...baseUpdate,
-//                 },
-//                 where: {
-//                   Id: body.DadosBancariosId,
-//                 },
-//               },
-//             },
-//             Enderecos: {
-//               update: {
-//                 CEP: Number(onlyNumbers(String(body.EnderecoCEP))),
-//                 Logradouro: body.EnderecoLogradouro,
-//                 Bairro: body?.EnderecoBairro,
-//                 Cidade: body?.EnderecoCidade,
-//                 Complemento: body?.EnderecoComplemento,
-//                 UF: body?.EnderecoUF,
-//                 Numero: body?.EnderecoNumero,
-//                 Latitude: 0,
-//                 Longitude: 0,
-//                 ...baseUpdate,
-//               },
-//             },
-//             TipoRelacao: 3,
-//             ...baseUpdate,
-//           },
-//         },
-//         CPF: body?.CPF,
-//         RG: body?.RG,
-//         DataNascimento: body.DataNascimento,
-//         NomeMae: body?.NomeMae,
-//         EstadoCivil: body?.EstadoCivil,
-//         Formacao: body?.Formacao,
-//         CTPS: body?.CTPS,
-//         PisPasep: body?.PisPasep,
-//         ...baseUpdate,
-//       },
-//     });
+      if (!(await productExists(Number(jsonData.productCode)))) {
+        errors.add(`O código de produto ${jsonData.productCode} não existe.`);
+        continue;
+      }
 
-//     res.status(200).json(createFeedback);
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json({
-//       error: true,
-//       message: err instanceof Error ? err.message : 'Unknown error occurred.',
-//     });
-//   }
-// };
+      const price = parseFloat(String(jsonData.newPrice));
+      if (isNaN(price) || price <= 0) {
+        errors.add(
+          `O novo preço do produto ${jsonData.productCode} deve ser um valor numérico válido maior que zero.`
+        );
+        continue;
+      }
+
+      const productStringify = JSON.stringify(
+        await productExists(Number(jsonData.productCode))
+      );
+
+      const costPrice = JSON.parse(productStringify).costPrice;
+
+      if (price < costPrice) {
+        errors.add(
+          `O preço de venda do produto ${jsonData.productCode} não pode ser menor que o preço de custo.`
+        );
+        continue;
+      }
+
+      const currentPrice = JSON.parse(productStringify).salesPrice;
+
+      const maxAllowedPrice = currentPrice * 1.1;
+      const minAllowedPrice = currentPrice * 0.9;
+
+      if (price > maxAllowedPrice) {
+        errors.add(
+          `O reajuste do preço de venda do produto ${jsonData.productCode} deve ser no máximo 10% maior do que o preço atual.`
+        );
+        continue;
+      }
+
+      if (price < minAllowedPrice) {
+        errors.add(
+          `O reajuste do preço de venda do produto ${jsonData.productCode} deve ser no mínimo 10% menor do que o preço atual.`
+        );
+        continue;
+      }
+
+      const productCode = Number(jsonData.productCode);
+      let packagePrice = 0;
+      const packageComponents = await prisma.pack.findMany({
+        where: { productId: productCode },
+      });
+
+      if (packageComponents.length > 0) {
+        for (const packageComponent of packageComponents) {
+          const componentInfo = JSON.parse(productStringify);
+          const componentQty = packageComponent.qty;
+          const newComponentPrice = jsonData.newPrice / componentQty;
+          updatedPrices[componentInfo.code] = newComponentPrice;
+          packagePrice += newComponentPrice * componentQty;
+
+          if (Math.abs(newComponentPrice - price) > 0.001) {
+            errors.add(
+              `O preço do pacote ${jsonData.productCode} deve ser igual à soma dos preços dos seus componentes.`
+            );
+            continue;
+          }
+        }
+      }
+
+      const productParse = JSON.parse(productStringify);
+      const product = {
+        code: productParse.code,
+        name: productParse.name,
+        costPrice: productParse.costPrice,
+        salesPrice: productParse.salesPrice,
+        newPrice: String(jsonData.newPrice),
+      };
+      productsOk.push(product);
+    }
+    // for (const product of productsOk) {
+    //   if (updatedPrices.hasOwnProperty(product.code)) {
+    //     product.salesPrice = updatedPrices[product.code];
+    //   }
+    // }
+
+    if (errors.size > 0) {
+      res.status(200).json({
+        error: true,
+        products: productsOk,
+        messages: Array.from(errors).map((error) => ({
+          title: error,
+          full: error,
+        })),
+      });
+    } else {
+      const createFeedback = {
+        products: productsOk,
+      };
+      res.status(200).json(createFeedback);
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      error: true,
+      message: err instanceof Error ? err.message : "Unknown error occurred.",
+    });
+  }
+};

@@ -24,6 +24,7 @@
     "eslint": "8.48.0",
     "eslint-config-next": "13.4.19",
     "lodash": "^4.17.21",
+    "multer": "^1.4.5-lts.1",
     "next": "13.4.19",
     "nextjs-cors": "^2.1.2",
     "postcss": "8.4.29",
@@ -40,6 +41,7 @@
     "styled-components": "^5"
   },
   "devDependencies": {
+    "@types/multer": "^1.4.7",
     "@types/styled-components": "^5.1.26",
     "ts-node": "^10.9.1"
   }

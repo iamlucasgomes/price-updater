@@ -1,7 +1,7 @@
 version: '3.8'
 name: 'shopper-challenge'
 services:
-  database:
+  db:
     image: mysql:8
     container_name: db
     platform: linux/x86_64
@@ -12,9 +12,8 @@ services:
       - MYSQL_ROOT_PASSWORD=root
     restart: 'always'
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "db"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "db" ]
       timeout: 10s
       retries: 5
     cap_add:
-    - SYS_NICE
-
+      - SYS_NICE
