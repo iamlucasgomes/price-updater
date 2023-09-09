@@ -1,0 +1,19 @@
+version: '3.8'
+name: 'shopper-challenge'
+services:
+  db:
+    image: mysql:8
+    container_name: db
+    platform: linux/x86_64
+    ports:
+      - 3306:3306
+    environment:
+      - MYSQL_ROOT_USER=root
+      - MYSQL_ROOT_PASSWORD=root
+    restart: 'always'
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "db" ]
+      timeout: 10s
+      retries: 5
+    cap_add:
+      - SYS_NICE
