@@ -9,6 +9,7 @@ type FooterProps = {
   hasError: boolean;
   text?: string;
   isValidating?: boolean;
+  setUpdate?: React.Dispatch<React.SetStateAction<boolean>>;
   setHasError?: React.Dispatch<React.SetStateAction<boolean>>;
   setIsValidating?: React.Dispatch<React.SetStateAction<boolean>>;
   setProducts?: React.Dispatch<
@@ -37,6 +38,7 @@ const DefaultFooter: React.FC<FooterProps> = ({
   setIsValidating,
   setProducts,
   setHasError,
+  setUpdate,
 }) => {
   return (
     <StyledFooter>
@@ -48,6 +50,9 @@ const DefaultFooter: React.FC<FooterProps> = ({
               loading={saveLoading}
               block
               type="primary"
+              onClick={() => {
+                if(setUpdate) setUpdate(true);
+              }}
             >
               Atualizar
             </Button>

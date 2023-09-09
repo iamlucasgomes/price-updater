@@ -45,6 +45,8 @@ export default async function handle(
     GET(req, res);
   } else if (req.method == "POST") {
     POST(req, res);
+  } else if (req.method == "PUT") {
+    PUT(req, res);
   }
 }
 
@@ -120,7 +122,6 @@ const POST = async (req: CustomNextApiRequest, res: NextApiResponse) => {
 
       const productCode = Number(jsonData.productCode);
 
-      // Verifique se o produto faz parte de um pacote
       const packageComponents = await prisma.pack.findMany({
         where: { productId: productCode },
       });
@@ -163,21 +164,6 @@ const POST = async (req: CustomNextApiRequest, res: NextApiResponse) => {
         continue;
       }
 
-      if (packageComponents.length > 0) {
-        for (const packageComponent of packageComponents) {
-          const componentInfo = JSON.parse(productStringify);
-          const componentQty = packageComponent.qty;
-          const newComponentPrice = price / componentQty;
-
-          if (Math.abs(newComponentPrice - componentInfo.salesPrice) > 0.001) {
-            errors.add(
-              `O preço do pacote ${jsonData.productCode} dividido pela quantidade não é igual ao preço do produto ${componentInfo.code}.`
-            );
-            break;
-          }
-        }
-      }
-
       const productParse = JSON.parse(productStringify);
       const product = {
         code: productParse.code,
@@ -189,12 +175,6 @@ const POST = async (req: CustomNextApiRequest, res: NextApiResponse) => {
       productsOk.push(product);
     }
 
-    for (const product of productsOk) {
-      if (updatedPrices.hasOwnProperty(product.code)) {
-        product.salesPrice = updatedPrices[product.code];
-      }
-    }
-    console.log(productsOk);
     if (errors.size > 0) {
       res.status(200).json({
         error: true,
@@ -210,6 +190,82 @@ const POST = async (req: CustomNextApiRequest, res: NextApiResponse) => {
       };
       res.status(200).json(createFeedback);
     }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      error: true,
+      message: err instanceof Error ? err.message : "Unknown error occurred.",
+    });
+  }
+};
+
+const PUT = async (req: NextApiRequest, res: NextApiResponse) => {
+  const body = req.body;
+  const errors = new Set<string>();
+  const productsOk = [];
+  const updatedPrices: { [key: string]: number } = {};
+
+  try {
+    const csvLines = body.trim().split("\n").slice(5, -2);
+    const jsonDataArray = [];
+    let totalNewPackPrice = 0;
+    const packIdsToUpdate = [];
+    for (const line of csvLines) {
+      jsonDataArray.push(parseCSVLine(line));
+    }
+    for (const jsonData of jsonDataArray) {
+      const productCode = Number(jsonData.productCode);
+
+      const packageComponents = await prisma.pack.findMany({
+        where: { productId: productCode },
+      });
+
+      const price = parseFloat(String(jsonData.newPrice));
+      if (isNaN(price) || price <= 0) {
+        errors.add(
+          `O novo preço do produto ${jsonData.productCode} deve ser um valor numérico válido maior que zero.`
+        );
+        continue;
+      }
+
+      if (packageComponents.length > 0) {
+        for (const packageComponent of packageComponents) {
+          const packId = packageComponent.packId;
+          packIdsToUpdate.push(packId);
+
+          const pack = await prisma.pack.findUnique({
+            where: { id: packId },
+          });
+
+          const newPackPrice = price * packageComponent.qty;
+          totalNewPackPrice += newPackPrice;
+
+          const newComponentPrice = newPackPrice / packageComponent.qty;
+
+          await prisma.product.update({
+            where: { code: packageComponent.productId },
+            data: { salesPrice: newComponentPrice },
+          });
+        }
+        console.log(totalNewPackPrice);
+        console.log(packIdsToUpdate);
+        // Após somar todos os valores no loop, atualize totalNewPackPrice para cada packId no array
+        for (const packIdToUpdate of packIdsToUpdate) {
+          await prisma.product.update({
+            where: { code: packIdToUpdate },
+            data: { salesPrice: totalNewPackPrice },
+          });
+        }
+      }
+
+      await prisma.product.update({
+        where: { code: productCode },
+        data: { salesPrice: price },
+      });
+    }
+
+    const createFeedback = "Produtos Atualizados";
+    res.status(200).json(createFeedback);
   } catch (err) {
     console.error(err);
     res.status(500).json({

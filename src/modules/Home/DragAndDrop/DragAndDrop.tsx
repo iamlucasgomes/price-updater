@@ -5,7 +5,7 @@ import { Wrapper } from "./styles";
 import DefaultFooter from "~/components/DrawerForm/DefaultFooter";
 import DragAndDrop from "~/components/DragAndDrop";
 import Card from "~/components/Card";
-import { set } from "lodash";
+import { on } from "events";
 
 type Props = {
   id?: string;
@@ -14,6 +14,8 @@ type Props = {
 
 const Drag: FC<Props> = ({ id, onSuccess }) => {
   const [droppedData, setDroppedData] = useState(null);
+  const [update, setUpdate] = useState(false);
+  const [dataUpdate, setDataUpdate] = useState(null);
   const [isValidating, setIsValidating] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [messageSuggestions, setMessageSuggestions] = useState<
@@ -39,6 +41,7 @@ const Drag: FC<Props> = ({ id, onSuccess }) => {
     defaultValues: {},
     integration: {
       route: "products",
+      isUpdate: update,
       formatter: () => ({
         droppedData,
       }),
@@ -57,6 +60,11 @@ const Drag: FC<Props> = ({ id, onSuccess }) => {
       setIsValidating(true);
       return setMessageSuggestions(data.messages);
     }
+
+    if (update) {
+      onSuccess();
+      setUpdate(false);
+    }
     setIsValidating(true);
     setHasError(data.error);
   };
@@ -68,13 +76,14 @@ const Drag: FC<Props> = ({ id, onSuccess }) => {
           {!isValidating && (
             <DragAndDrop onFileUploadSuccess={handleFileUploadSuccess} />
           )}
-          {products.map((product, key) => (
-            <Card
-              key={key}
-              title={`Codigo ${product.code}`}
-              content={product}
-            />
-          ))}
+          {products &&
+            products.map((product, key) => (
+              <Card
+                key={key}
+                title={`Codigo ${product.code}`}
+                content={product}
+              />
+            ))}
         </Wrapper>
       </Spin>
       <DefaultFooter
@@ -85,6 +94,7 @@ const Drag: FC<Props> = ({ id, onSuccess }) => {
         hasError={hasError}
         setHasError={setHasError}
         messageSuggestions={messageSuggestions}
+        setUpdate={setUpdate}
         text="Validar"
       />
     </form>
