@@ -93,6 +93,8 @@ const GET = async (
   });
 };
 
+// ...
+
 const POST = async (req: CustomNextApiRequest, res: NextApiResponse) => {
   const body = req.body;
   const errors = new Set<string>();
@@ -116,6 +118,13 @@ const POST = async (req: CustomNextApiRequest, res: NextApiResponse) => {
         continue;
       }
 
+      const productCode = Number(jsonData.productCode);
+
+      // Verifique se o produto faz parte de um pacote
+      const packageComponents = await prisma.pack.findMany({
+        where: { productId: productCode },
+      });
+
       const price = parseFloat(String(jsonData.newPrice));
       if (isNaN(price) || price <= 0) {
         errors.add(
@@ -124,9 +133,7 @@ const POST = async (req: CustomNextApiRequest, res: NextApiResponse) => {
         continue;
       }
 
-      const productStringify = JSON.stringify(
-        await productExists(Number(jsonData.productCode))
-      );
+      const productStringify = JSON.stringify(await productExists(productCode));
 
       const costPrice = JSON.parse(productStringify).costPrice;
 
@@ -156,25 +163,17 @@ const POST = async (req: CustomNextApiRequest, res: NextApiResponse) => {
         continue;
       }
 
-      const productCode = Number(jsonData.productCode);
-      let packagePrice = 0;
-      const packageComponents = await prisma.pack.findMany({
-        where: { productId: productCode },
-      });
-
       if (packageComponents.length > 0) {
         for (const packageComponent of packageComponents) {
           const componentInfo = JSON.parse(productStringify);
           const componentQty = packageComponent.qty;
-          const newComponentPrice = jsonData.newPrice / componentQty;
-          updatedPrices[componentInfo.code] = newComponentPrice;
-          packagePrice += newComponentPrice * componentQty;
+          const newComponentPrice = price / componentQty;
 
-          if (Math.abs(newComponentPrice - price) > 0.001) {
+          if (Math.abs(newComponentPrice - componentInfo.salesPrice) > 0.001) {
             errors.add(
-              `O preço do pacote ${jsonData.productCode} deve ser igual à soma dos preços dos seus componentes.`
+              `O preço do pacote ${jsonData.productCode} dividido pela quantidade não é igual ao preço do produto ${componentInfo.code}.`
             );
-            continue;
+            break;
           }
         }
       }
@@ -189,12 +188,13 @@ const POST = async (req: CustomNextApiRequest, res: NextApiResponse) => {
       };
       productsOk.push(product);
     }
-    // for (const product of productsOk) {
-    //   if (updatedPrices.hasOwnProperty(product.code)) {
-    //     product.salesPrice = updatedPrices[product.code];
-    //   }
-    // }
 
+    for (const product of productsOk) {
+      if (updatedPrices.hasOwnProperty(product.code)) {
+        product.salesPrice = updatedPrices[product.code];
+      }
+    }
+    console.log(productsOk);
     if (errors.size > 0) {
       res.status(200).json({
         error: true,
