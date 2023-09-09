@@ -1,5 +1,5 @@
 version: '3.8'
-name: 'shopper-challenge'
+name: 'price-updater'
 services:
   db:
     image: mysql:8
