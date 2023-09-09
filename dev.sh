@@ -13,6 +13,7 @@ check_containers() {
 run_commands() {
   local attempt=0
   npm install &&
+    next build &&
     docker compose up -d &&
     check_containers &&
     npx prisma migrate deploy &&
