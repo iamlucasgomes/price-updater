@@ -1,7 +1,6 @@
 import styled from 'styled-components';
 
 export const StyledFooter = styled.div`
-  position: absolute;
   left: 0;
   width: 100%;
   padding: 12px 14px;
