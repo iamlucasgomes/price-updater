@@ -9,6 +9,7 @@ type FooterProps = {
   hasError: boolean;
   text?: string;
   isValidating?: boolean;
+  droppedData?: any;
   setUpdate?: React.Dispatch<React.SetStateAction<boolean>>;
   setHasError?: React.Dispatch<React.SetStateAction<boolean>>;
   setIsValidating?: React.Dispatch<React.SetStateAction<boolean>>;
@@ -39,6 +40,7 @@ const DefaultFooter: React.FC<FooterProps> = ({
   setProducts,
   setHasError,
   setUpdate,
+  droppedData,
 }) => {
   return (
     <StyledFooter>
@@ -51,7 +53,7 @@ const DefaultFooter: React.FC<FooterProps> = ({
               block
               type="primary"
               onClick={() => {
-                if(setUpdate) setUpdate(true);
+                if (setUpdate) setUpdate(true);
               }}
             >
               Atualizar
@@ -75,17 +77,19 @@ const DefaultFooter: React.FC<FooterProps> = ({
             </Button>
           </Col>
         )}
-        <Col style={{ marginRight: "18px" }} span={6}>
-          <Button
-            disabled={isValidating}
-            htmlType="submit"
-            loading={saveLoading}
-            block
-            type="primary"
-          >
-            {text ? text : "Salvar"}
-          </Button>
-        </Col>
+        {droppedData && (
+          <Col style={{ marginRight: "18px" }} span={6}>
+            <Button
+              disabled={isValidating}
+              htmlType="submit"
+              loading={saveLoading}
+              block
+              type="primary"
+            >
+              {text ? text : "Salvar"}
+            </Button>
+          </Col>
+        )}
       </Row>
       <Row justify="end">
         <Col style={{ marginTop: 4, marginRight: 16 }}>

@@ -95,6 +95,7 @@ const Drag: FC<Props> = ({ id, onSuccess }) => {
         setHasError={setHasError}
         messageSuggestions={messageSuggestions}
         setUpdate={setUpdate}
+        droppedData={droppedData}
         text="Validar"
       />
     </form>
